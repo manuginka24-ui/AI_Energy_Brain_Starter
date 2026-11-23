@@ -1,0 +1,14 @@
+import{useEffect,useState}from"react";
+const API="http://localhost:5000/api";
+export default function App(){
+ const [summary,S]=useState({}),[rows,R]=useState([]),[tips,T]=useState([]),[msg,M]=useState("");
+ const [f,F]=useState({appliance:"Fan",watts:75,hoursPerDay:8,days:1});
+ async function load(){try{const [s,r,t]=await Promise.all(["summary","readings","recommendations"].map(x=>fetch(`${API}/${x}`)));if(!s.ok||!r.ok||!t.ok)throw Error();S(await s.json());R(await r.json());T((await t.json()).suggestions);M("");}catch{M("Cannot reach API. Start MongoDB and backend first.");}}
+ useEffect(()=>{load()},[]);
+ async function save(e){e.preventDefault();const r=await fetch(`${API}/readings/manual`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(f)});const d=await r.json();M(r.ok?`Saved ${d.energyKwh} kWh.`:d.message);if(r.ok)load();}
+ return <main><header><div><small>SMART BUILDING MANAGEMENT</small><h1>⚡ AI Energy Brain</h1><p>Monitor energy, costs and smart insights.</p></div><button onClick={load}>Refresh</button></header>{msg&&<p className="notice">{msg}</p>}
+ <section className="cards"><article><small>Total recorded energy</small><h2>{summary.totalKwh??0} kWh</h2></article><article><small>Estimated electricity cost</small><h2>₹{summary.estimatedCost??0}</h2></article><article><small>Manual usage</small><h2>{summary.manualKwh??0} kWh</h2></article><article><small>IoT usage</small><h2>{summary.iotKwh??0} kWh</h2></article></section>
+ <section className="columns"><article><h2>Manual appliance entry</h2><form onSubmit={save}><label>Appliance<input value={f.appliance} onChange={e=>F({...f,appliance:e.target.value})}/></label><label>Power (watts)<input type="number" value={f.watts} onChange={e=>F({...f,watts:e.target.value})}/></label><label>Hours per day<input type="number" step=".1" max="24" value={f.hoursPerDay} onChange={e=>F({...f,hoursPerDay:e.target.value})}/></label><label>Number of days<input type="number" value={f.days} onChange={e=>F({...f,days:e.target.value})}/></label><button>Save reading</button></form><p className="muted">kWh = watts × hours × days ÷ 1000</p></article>
+ <article><h2>AI Energy Brain</h2><ul>{tips.map((x,i)=><li key={i}>{x}</li>)}</ul><p className="muted">Starter recommendations use rules. Add historical data before training a reliable prediction model.</p><h2>IoT monitoring</h2><p>ESP32 sends readings to <code>POST /api/readings/iot</code> with an x-api-key header. See the supplied ESP32 sketch.</p></article></section>
+ <article><h2>Latest readings</h2><div className="table"><table><thead><tr><th>Source</th><th>Appliance / device</th><th>Energy</th><th>Date</th></tr></thead><tbody>{rows.map(x=><tr key={x._id}><td>{x.source}</td><td>{x.appliance||x.deviceId}</td><td>{x.energyKwh} kWh</td><td>{new Date(x.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div></article><footer>AI Energy Brain · College Mini Project</footer></main>
+}
